@@ -1,54 +1,27 @@
-name: Build Karere AppImage
+name: Build AppImage
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Check daily at midnight UTC
+    - cron: '0 0 * * *'
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl wget git jq build-essential cmake ninja-build \
-              libgtk-3-dev libsoup2.4-dev libwebkit2gtk-4.0-dev libx11-dev \
-              libasound2-dev libglib2.0-dev libnss3-dev p7zip-full desktop-file-utils \
-              appstream
-              
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: sudo chmod +x get-dependencies.sh && sudo ./get-dependencies.sh
 
       - name: Build AppImage
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          chmod +x ./make-appimage.sh
-          ./make-appimage.sh
+        run: chmod +x make-appimage.sh && ./make-appimage.sh
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Karere-AppImage
-          path: out/*.AppImage
-
-      - name: Release AppImage
-        uses: softprops/action-gh-release@v2
-        if: env.NEW_RELEASE == 'true'
-        with:
-          tag_name: ${{ env.KARERE_TAG }}
-          name: "Karere ${{ env.KARERE_VERSION }}"
-          files: out/*.AppImage
-          draft: false
-          prerelease: false
-          body: |
-            Automated AppImage build for Karere ${{ env.KARERE_VERSION }}.
-            
-            Built using `pkgforge-dev/quick-sharun`.
+          path: "*.AppImage"

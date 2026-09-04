@@ -1,24 +1,41 @@
 #!/bin/sh
-
 set -eu
 
-ARCH=$(uname -m)
-VERSION=$(pacman -Q PACKAGENAME | awk '{print $2; exit}') # example command to get version of application here
-export ARCH VERSION
-export OUTPATH=./dist
-export ADD_HOOKS="self-updater.hook"
-export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
-export ICON=PATH_OR_URL_TO_ICON
-export DESKTOP=PATH_OR_URL_TO_DESKTOP_ENTRY
+ARCH="$(uname -m)"
 
-# Deploy dependencies
-quick-sharun /PATH/TO/BINARY_AND_LIBRARIES_HERE
+VERSION="$(
+    sed -n 's/^version = "\(.*\)"/\1/p' \
+        /tmp/karere/Cargo.toml |
+    head -n1
+)"
 
-# Additional changes can be done in between here
+export ARCH
+export VERSION
 
-# Turn AppDir into AppImage
+export OUTPATH="$PWD/dist"
+
+export ICON="/usr/share/icons/hicolor/256x256/apps/io.github.tobagin.karere.png"
+export DESKTOP="/usr/share/applications/io.github.tobagin.karere.desktop"
+
+echo "==> Karere version: $VERSION"
+echo "==> Architecture: $ARCH"
+
+echo "==> Deploying Karere with quick-sharun..."
+
+quick-sharun \
+    /usr/bin/karere \
+    /usr/lib/cef
+
+echo "==> Creating AppImage..."
+
 quick-sharun --make-appimage
 
-# Test the app for 12 seconds, if the test fails due to the app
-# having issues running in the CI use --simple-test instead
+echo "==> Testing AppImage..."
+
 quick-sharun --test ./dist/*.AppImage
+
+echo
+echo "============================================================"
+echo "AppImage successfully created:"
+echo "============================================================"
+ls -lh ./dist/*.AppImage
